@@ -1,0 +1,8 @@
+string = "".ljust(120, "#")
+print(string)
+string = "".ljust(120, "1")
+print(string)
+string = "".ljust(120, "-")
+print(string)
+string = "".ljust(120, "√")
+print(string)

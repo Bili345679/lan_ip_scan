@@ -3,5 +3,7 @@
     "timeout": 1,
     "interval": 1,
     "show_ping_time": true,
-    "show_res_flag":"all"
+    "show_res_flag": "success",
+    "show_ping_time_len": false,
+    "loop_mode":false
 }

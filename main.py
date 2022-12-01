@@ -194,9 +194,10 @@ def show_res(res):
         ) + " "
         each_info += each_ip.ljust(ip_max_len, " ")[shorten_ip_len:] + " "
         each_info += (
-            (str(res_dict_sorted[each_ip]).ljust(ping_time_max_len, " "))
-            if not show_ping_time_len
-            else str(res_dict_sorted[each_ip])[0:show_ping_time_len] + "|"
+            str(res_dict_sorted[each_ip]).ljust(ping_time_max_len, " ")[
+                0:show_ping_time_len
+            ]
+            + "|"
         )
 
         # 信息条数+1

@@ -1,0 +1,7 @@
+{
+    "ip_range": "192.168.0-1.*",
+    "timeout": 1,
+    "interval": 1,
+    "show_ping_time": true,
+    "show_res_flag":"all"
+}

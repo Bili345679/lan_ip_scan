@@ -15,6 +15,10 @@ interval = 0
 show_ping_time = True
 # 展示ping时长长度
 show_ping_time_len = False
+# 是否缩短IP
+shorten_ip = True
+# 缩短IP长度
+shorten_ip_len = 0
 # 展示结果
 #   all 全部
 #   success 仅展示成功的
@@ -57,13 +61,14 @@ def init_config():
 def load_config():
     with open("./config.json", "r") as file:
         config = json.load(file)
-    
+
     global timeout
     global interval
     global show_ping_time
     global show_res_flag
     global show_ping_time_len
     global loop_mode
+    global shorten_ip
 
     timeout = config["timeout"]
     interval = config["interval"]
@@ -71,6 +76,7 @@ def load_config():
     show_res_flag = config["show_res_flag"]
     show_ping_time_len = config["show_ping_time_len"]
     loop_mode = config["loop_mode"]
+    shorten_ip = config["shorten_ip"]
     ip_range_list = config["ip_range"].split(".")
     index = 0
     for each in ip_range_list:
@@ -81,12 +87,19 @@ def load_config():
 
 # 设置ip区域
 def set_ip_range(ip_range_list_each, index):
+    global shorten_ip_len
     start = 0
     end = 0
     if ip_range_list_each == "*":
         start = 0
         end = 255
     elif re.match(r"^\d{1,3}$", ip_range_list_each):
+        # 所有目标IP的该位数字一样，可以隐藏
+        if shorten_ip:
+            shorten_ip_len += len(ip_range_list_each)
+            if index < 3:
+                shorten_ip_len += 1
+
         start = int(ip_range_list_each)
         end = int(ip_range_list_each)
     elif re.match(r"^\d{1,3}-\d{1,3}$", ip_range_list_each):
@@ -122,7 +135,7 @@ def show_res(res):
     # IP字符串最大长度
     ip_max_len = 0
     # 时间字符串最大长度
-    ping_time_max_len = 0
+    ping_time_max_len = 0 if not show_ping_time_len else show_ping_time_len
     # 每条信息长度
     each_info_len = 0
 
@@ -167,16 +180,24 @@ def show_res(res):
     terminal_height = os.get_terminal_size()[1]
     # 每条信息长度
     # (√/×) ip_max_len ping_time_max_len
-    each_info_len = 2 + 1 + ip_max_len + 1 + ping_time_max_len + 1
-    
+    each_info_len = 2 + 1 + (ip_max_len - shorten_ip_len) + 1 + ping_time_max_len + 1
+
     # 行信息条数
     line_info_count = 0
     for each_ip in res_dict_sorted:
         # 拼接信息
         each_info = ""
-        each_info += (colored("√", "green") if res_dict_sorted[each_ip] != -1 else colored("×", "red")) + " "
-        each_info += each_ip.ljust(ip_max_len, " ") + " "
-        each_info += str(res_dict_sorted[each_ip]).ljust(ping_time_max_len, " ") + "|"
+        each_info += (
+            colored("√", "green")
+            if res_dict_sorted[each_ip] != -1
+            else colored("×", "red")
+        ) + " "
+        each_info += each_ip.ljust(ip_max_len, " ")[shorten_ip_len:] + " "
+        each_info += (
+            (str(res_dict_sorted[each_ip]).ljust(ping_time_max_len, " "))
+            if not show_ping_time_len
+            else str(res_dict_sorted[each_ip])[0:show_ping_time_len] + "|"
+        )
 
         # 信息条数+1
         line_info_count += 1

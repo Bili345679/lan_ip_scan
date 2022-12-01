@@ -2,6 +2,10 @@ from multiping import MultiPing
 import json
 import re
 import os
+from termcolor import colored
+
+# 彩色输出
+os.system("color")
 
 # 超时
 timeout = 0
@@ -164,13 +168,13 @@ def show_res(res):
     # 每条信息长度
     # (√/×) ip_max_len ping_time_max_len
     each_info_len = 2 + 1 + ip_max_len + 1 + ping_time_max_len + 1
+    
     # 行信息条数
-    line_info_count = 1
-
+    line_info_count = 0
     for each_ip in res_dict_sorted:
         # 拼接信息
         each_info = ""
-        each_info += ("√" if res_dict_sorted[each_ip] != -1 else "×") + " "
+        each_info += (colored("√", "green") if res_dict_sorted[each_ip] != -1 else colored("×", "red")) + " "
         each_info += each_ip.ljust(ip_max_len, " ") + " "
         each_info += str(res_dict_sorted[each_ip]).ljust(ping_time_max_len, " ") + "|"
 

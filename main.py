@@ -55,13 +55,13 @@ def init_config():
     with open("./config.json", "w+") as file:
         json.dump(
             {
-                "ip_range": "192.168.0.*",  # IP范围 192: 这一位只扫描192;   0 - 1: 这一位扫描0与1;   *: 这意味扫描0到255
+                "ip_range": "192.168.0-1.*",  # IP范围 192: 这一位只扫描192;   0 - 1: 这一位扫描0与1;   *: 这意味扫描0到255
                 "timeout": 1,  # PING超时时间，如果超过{interval}，判断为PING失败
                 "interval": 1,  # 检测间隔，当{loop_mode}为True时，每间隔{interval}秒，检测一次
                 "show_ping_time": True,  # 是否展示实际PING值
                 "show_res_flag": "success",  # 显示哪些结果 "success": 仅显示成功结果;   "error": 仅显示失败结果;   "all": 显示成功与失败的结果
                 "show_ping_time_len": 5,  # 显示ping值的字符串长度
-                "shorten_ip": True,  # 是否显示断IP，例如：扫描192.168.0-1.*时，隐藏通用的"192.168.",仅显示后两位
+                "shorten_ip": True,  # 是否缩短显示IP，例如：扫描192.168.0-1.*时，隐藏"192.168.",仅显示后两位
                 "loop_mode": True,  # 循环模式
                 "offline_check_times": 5,  # 掉线检测
                 # 当{offline_check_times}为整数时，当最后一次检测成功某IP成功，到最后一次检测某IP失败，超过循环次数时，不显示该IP，否则一直显示该IP

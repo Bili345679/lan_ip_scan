@@ -59,11 +59,11 @@ def init_config():
                 "timeout": 1,  # PING超时时间，如果超过{interval}，判断为PING失败
                 "interval": 1,  # 检测间隔，当{loop_mode}为True时，每间隔{interval}秒，检测一次
                 "show_ping_time": True,  # 是否展示实际PING值
-                "show_res_flag": "success",  # 显示哪些结果 "success": 仅显示成功结果;   "error": 仅显示失败结果;   "all": 显示成功与失败的结果
+                "show_res_flag": "all",  # 显示哪些结果 "success": 仅显示成功结果;   "error": 仅显示失败结果;   "all": 显示成功与失败的结果
                 "show_ping_time_len": 5,  # 显示ping值的字符串长度
                 "shorten_ip": True,  # 是否缩短显示IP，例如：扫描192.168.0-1.*时，隐藏"192.168.",仅显示后两位
                 "loop_mode": True,  # 循环模式
-                "offline_check_times": 5,  # 掉线检测
+                "offline_check_times": -1,  # 掉线检测
                 # 当{offline_check_times}为整数时，当最后一次检测成功某IP成功，到最后一次检测某IP失败，超过循环次数时，不显示该IP，否则一直显示该IP
                 # 当{offline_check_times}为-1时，则一直显示检测到的IP，无论其是否掉线
                 "show_offline_check_times_flag": True,  # 是否显示掉线次数
@@ -160,12 +160,14 @@ def set_ip_list():
 # 掉线结果统计
 def offline_res(res):
     global offline_check_times_max_len
+    offline_check_times_max_len = 0
     for each in res[0]:
         # 在线
         offline_times[each] = 0
     for each in res[1]:
         # 掉线
         offline_times[each] += 1
+        # 字符串长度
         if len(str(offline_times[each])) > offline_check_times_max_len:
             offline_check_times_max_len = len(str(offline_times[each]))
 
@@ -240,7 +242,11 @@ def show_res(res):
     line_info_count = 0
     for each_ip in res_dict_sorted:
         # 跳过超过掉线次数上限的结果
-        if show_offline_check_times_flag and offline_times[each_ip] > offline_check_times:
+        if (
+            show_offline_check_times_flag
+            and offline_check_times != -1
+            and offline_times[each_ip] > offline_check_times
+        ):
             continue
 
         # 拼接信息
@@ -268,7 +274,12 @@ def show_res(res):
 
         # 掉线次数
         if show_offline_check_times_flag:
-            each_info += str(offline_times[each_ip])
+            offline_times_value_string = str(offline_times[each_ip]).ljust(offline_check_times_max_len, " ")
+            each_info += (
+                colored(offline_times_value_string, "green")
+                if offline_times[each_ip] == 0
+                else colored(offline_times_value_string, "red")
+            )
 
         # 分隔
         each_info += "|"

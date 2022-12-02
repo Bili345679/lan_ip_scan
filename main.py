@@ -3,6 +3,7 @@ import json
 import re
 import os
 from termcolor import colored
+import time
 
 # 彩色输出
 os.system("color")
@@ -26,6 +27,12 @@ shorten_ip_len = 0
 show_res_flag = "all"
 # 循环模式
 loop_mode = False
+# 掉线检测
+offline_check_times = 5
+# 掉线次数转字符串最大长度
+offline_check_times_max_len = 0
+# 是否显示掉线次数
+show_offline_check_times_flag = True
 # ip范围
 ip_range = [
     0,
@@ -39,19 +46,27 @@ ip_range = [
 ]
 # ip列表
 ip_list = []
+# 自最后一次在线，到现在为止的掉线次数
+offline_times = {}
+
 
 # 初始化设置
 def init_config():
     with open("./config.json", "w+") as file:
         json.dump(
             {
-                "ip_range": "192.168.0-1.*",
-                "timeout": 1,
-                "interval": 1,
-                "show_ping_time": True,
-                "show_res_flag": "success",
-                "show_ping_time_len": False,
-                "loop_mode": False,
+                "ip_range": "192.168.0.*",  # IP范围 192: 这一位只扫描192;   0 - 1: 这一位扫描0与1;   *: 这意味扫描0到255
+                "timeout": 1,  # PING超时时间，如果超过{interval}，判断为PING失败
+                "interval": 1,  # 检测间隔，当{loop_mode}为True时，每间隔{interval}秒，检测一次
+                "show_ping_time": True,  # 是否展示实际PING值
+                "show_res_flag": "success",  # 显示哪些结果 "success": 仅显示成功结果;   "error": 仅显示失败结果;   "all": 显示成功与失败的结果
+                "show_ping_time_len": 5,  # 显示ping值的字符串长度
+                "shorten_ip": True,  # 是否显示断IP，例如：扫描192.168.0-1.*时，隐藏通用的"192.168.",仅显示后两位
+                "loop_mode": True,  # 循环模式
+                "offline_check_times": 5,  # 掉线检测
+                # 当{offline_check_times}为整数时，当最后一次检测成功某IP成功，到最后一次检测某IP失败，超过循环次数时，不显示该IP，否则一直显示该IP
+                # 当{offline_check_times}为-1时，则一直显示检测到的IP，无论其是否掉线
+                "show_offline_check_times_flag": True,  # 是否显示掉线次数
             },
             file,
         )
@@ -59,16 +74,23 @@ def init_config():
 
 # 读取配置
 def load_config():
-    with open("./config.json", "r") as file:
-        config = json.load(file)
+    try:
+        with open("./config.json", "r") as file:
+            config = json.load(file)
+    except Exception:
+        init_config()
+        load_config()
+        return True
 
     global timeout
     global interval
     global show_ping_time
     global show_res_flag
     global show_ping_time_len
-    global loop_mode
     global shorten_ip
+    global loop_mode
+    global offline_check_times
+    global show_offline_check_times_flag
 
     timeout = config["timeout"]
     interval = config["interval"]
@@ -77,11 +99,15 @@ def load_config():
     show_ping_time_len = config["show_ping_time_len"]
     loop_mode = config["loop_mode"]
     shorten_ip = config["shorten_ip"]
+    offline_check_times = config["offline_check_times"]
+    show_offline_check_times_flag = config["show_offline_check_times_flag"]
     ip_range_list = config["ip_range"].split(".")
+
     index = 0
     for each in ip_range_list:
         set_ip_range(each, index)
         index += 1
+
     set_ip_list()
 
 
@@ -128,6 +154,20 @@ def set_ip_list():
                         + str(num_4 + ip_range[6])
                     )
                     ip_list.append(ip)
+                    offline_times[ip] = 0
+
+
+# 掉线结果统计
+def offline_res(res):
+    global offline_check_times_max_len
+    for each in res[0]:
+        # 在线
+        offline_times[each] = 0
+    for each in res[1]:
+        # 掉线
+        offline_times[each] += 1
+        if len(str(offline_times[each])) > offline_check_times_max_len:
+            offline_check_times_max_len = len(str(offline_times[each]))
 
 
 # 展示结果
@@ -175,30 +215,63 @@ def show_res(res):
         ):
             ping_time_max_len = len(str(res_dict_sorted[each_ip]))
 
+    # 打印
     # 终端字符长度
     terminal_width = os.get_terminal_size()[0]
     terminal_height = os.get_terminal_size()[1]
+
+    print("".ljust(terminal_width, "#"))
+
     # 每条信息长度
-    # (√/×) ip_max_len ping_time_max_len
-    each_info_len = 2 + 1 + (ip_max_len - shorten_ip_len) + 1 + ping_time_max_len + 1
+    each_info_len = 0
+    # 在线判断
+    each_info_len += 2 + 1
+    # ip地址
+    each_info_len += (ip_max_len - shorten_ip_len) + 1
+    # ping值
+    each_info_len += ping_time_max_len + 1
+    # 掉线次数
+    if show_offline_check_times_flag:
+        each_info_len += offline_check_times_max_len + 1
+    # 分隔
+    each_info_len += 1
 
     # 行信息条数
     line_info_count = 0
     for each_ip in res_dict_sorted:
+        # 跳过超过掉线次数上限的结果
+        if show_offline_check_times_flag and offline_times[each_ip] > offline_check_times:
+            continue
+
         # 拼接信息
         each_info = ""
+
+        # 在线判断
         each_info += (
             colored("√", "green")
             if res_dict_sorted[each_ip] != -1
             else colored("×", "red")
         ) + " "
+
+        # ip地址
         each_info += each_ip.ljust(ip_max_len, " ")[shorten_ip_len:] + " "
-        each_info += (
-            str(res_dict_sorted[each_ip]).ljust(ping_time_max_len, " ")[
+
+        # ping值
+        ping_value = res_dict_sorted[each_ip]
+        if ping_value == -1:
+            each_info += "".ljust(show_ping_time_len, "-")
+        else:
+            each_info += str(ping_value).ljust(ping_time_max_len, " ")[
                 0:show_ping_time_len
             ]
-            + "|"
-        )
+        each_info += " "
+
+        # 掉线次数
+        if show_offline_check_times_flag:
+            each_info += str(offline_times[each_ip])
+
+        # 分隔
+        each_info += "|"
 
         # 信息条数+1
         line_info_count += 1
@@ -208,12 +281,27 @@ def show_res(res):
             line_info_count = 1
 
         print(each_info, end="")
+    print()
+    print("".ljust(terminal_width, "#"))
 
 
 load_config()
 
-mp = MultiPing(ip_list)
-mp.send()
-res = mp.receive(timeout)
+while True:
+    mp = MultiPing(ip_list)
+    mp.send()
+    try:
+        res = mp.receive(timeout)
+    except:
+        print("error")
 
-show_res(res)
+    # 掉线结果
+    offline_res(res)
+
+    # 展示结果
+    show_res(res)
+
+    if not loop_mode:
+        break
+    else:
+        time.sleep(interval)

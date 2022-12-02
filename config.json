@@ -1,10 +1,1 @@
-{
-    "ip_range": "192.168.0.*",
-    "timeout": 1,
-    "interval": 1,
-    "show_ping_time": true,
-    "show_res_flag": "success",
-    "show_ping_time_len": 5,
-    "shorten_ip":true,
-    "loop_mode":false
-}
+{"ip_range": "192.168.0.*", "timeout": 1, "interval": 1, "show_ping_time": true, "show_res_flag": "success", "show_ping_time_len": 5, "shorten_ip": true, "loop_mode": false, "offline_check_times": 5, "show_offline_check_times_flag": true}
